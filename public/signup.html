@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MediLink | Sign up</title>
+  <link rel="icon" href="/icons/icon-192x192.png"><link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <main style="max-width:520px">
+    <section class="card">
+      <h2>Create your account</h2>
+      <div class="tabs"><button id="tabPatient" class="on">Patient</button><button id="tabDoctor">Doctor</button></div>
+      <form id="form">
+        <label for="name">Full name</label><input id="name" required>
+        <label for="email">Email</label><input id="email" type="email" required>
+        <p class="hint" id="emailHint" style="margin:4px 0 0"></p>
+        <div id="patientFields">
+          <div class="row">
+            <div><label for="phone">Phone</label><input id="phone"></div>
+            <div><label for="age">Age</label><input id="age" type="number" min="0"></div>
+          </div>
+        </div>
+        <div id="doctorFields" hidden>
+          <div class="row">
+            <div><label for="specialty">Specialty</label><input id="specialty"></div>
+            <div><label for="licenseNo">Licence number</label><input id="licenseNo"></div>
+          </div>
+        </div>
+        <label for="password">Password</label><input id="password" type="password" required>
+        <label class="check" id="confirmRow" style="margin-top:12px"><input type="checkbox" id="confirm">
+          I confirm these details are correct. They are sealed on the blockchain and used for all my bookings.</label>
+        <button class="btn full" id="submit">Create patient account</button>
+      </form>
+      <p class="hint" style="margin-top:12px">Already registered? <a href="/signin">Sign in</a></p>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+  <script>
+    let role = "patient";
+    function setRole(r) {
+      role = r;
+      $("tabPatient").classList.toggle("on", r === "patient");
+      $("tabDoctor").classList.toggle("on", r === "doctor");
+      $("patientFields").hidden = $("confirmRow").hidden = r !== "patient";
+      $("doctorFields").hidden = r !== "doctor";
+      $("emailHint").textContent = r === "doctor" ? "Doctors use their staff email: firstname.lastname@medilink.com" : "";
+      $("submit").textContent = r === "doctor" ? "Apply as doctor" : "Create patient account";
+    }
+    $("tabPatient").onclick = () => setRole("patient");
+    $("tabDoctor").onclick = () => setRole("doctor");
+
+    $("form").onsubmit = async (e) => {
+      e.preventDefault();
+      const body = { role, confirm: $("confirm").checked };
+      for (const k of ["name", "email", "password", "phone", "age", "specialty", "licenseNo"]) body[k] = $(k).value.trim();
+      $("submit").disabled = true;
+      toast("wait", "Creating your account…", "Setting up your blockchain wallet");
+      try {
+        const r = await api("signup", body);
+        toast("ok", role === "doctor" ? "Application recorded" : "Account created", onChain(r));
+        setTimeout(() => (location.href = role === "doctor" ? "/doctor" : "/"), 1500);
+      } catch (err) {
+        toast("bad", "Sign up failed", err.message);
+        $("submit").disabled = false;
+      }
+    };
+    layout("signup");
+  </script>
+</body>
+</html>
