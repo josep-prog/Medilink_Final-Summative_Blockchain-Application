@@ -1,0 +1,46 @@
+{
+ "contract": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+ "users": [
+  {
+   "role": "admin",
+   "name": "MediLink Admin",
+   "email": "admin@medilink.com",
+   "address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+   "key": "6e6fbee793095b03ea0f38998bd3d630.f40a77a70e670bcf0f0fffd6.8d6386002dfba7ef7cf00910ef3fa910.d0ead2e6f56ab8768a5698a2264dc4c44f6a0753c8093646c695aa2ae1eb685a4c5207d94fd75899e7aa09ca22d3ab6d4e37b30952de2e9a39601e65ceb484688895"
+  },
+  {
+   "role": "doctor",
+   "name": "Dr. Alice Mukamana",
+   "email": "alice.mukamana@medilink.com",
+   "phone": "",
+   "age": "",
+   "specialty": "Cardiology",
+   "licenseNo": "RMDC-1042",
+   "address": "0x5A1604e90f556Eea76Df83677ec19a167a121A17",
+   "key": "867eeebb26f15bbffcd6ed801c8b3b39.448ea803de7d6567ce2d9187.fadb92384cf668995fda4337e96e3a80.d9355c356847ef4e5cceee11b432530497d3406e76f9f9d4a6f31ad3b07524a134666e052a20e29dfa3c04f74e7d426aa2f59da30601c5783937a44fcbe772f173f2"
+  },
+  {
+   "role": "patient",
+   "name": "Jean Mugisha",
+   "email": "jean.mugisha@gmail.com",
+   "phone": "+250788000000",
+   "age": "34",
+   "specialty": "",
+   "licenseNo": "",
+   "address": "0xDc9687B472d776893b0965A0A69D51BC5c296449",
+   "key": "abbb73a323bc8e57c87e31226a559dfe.8c65ada4a44886aac8d523eb.087bf5734c66b5b2076f313ce0a6266e.681d2107b8864723a371ab6e46bba6b812667db9307e1ef54c1837ae951edf265664ec863d666ab5b6483be414e2a0221dd5dae29f162a1ea8798593a40c29297d78"
+  },
+  {
+   "role": "patient",
+   "name": "Aline Uwase",
+   "email": "aline.uwase@gmail.com",
+   "phone": "+250788111111",
+   "age": "29",
+   "address": "0xd3a9286DF4046F68DA8F8E54488b5e091e055972",
+   "key": "14f190ac7e82c1fcb09de5b571193971.630445260291e129b6c59815.5465a78eb89db284613575f4ae091942.f90b09e9d94de8e7dce23d13efd816c43e27d391a39a82a1d9cccfb822cf3d3e537a6d8f20dfcc79834c299193761d01976fe2ee7804fa7931139789d3ec8ca763f6"
+  }
+ ],
+ "meetings": {
+  "1": "a25eb5821f5a6d52a3e7d890fb5140f4"
+ }
+}
