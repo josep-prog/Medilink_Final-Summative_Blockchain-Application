@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MediLink | Book a doctor</title>
+  <link rel="icon" href="/icons/icon-192x192.png"><link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <main>
+    <section class="card hero">
+      <h1>Book a doctor without the queue</h1>
+      <p>Choose a verified doctor and a time. Every booking is sealed on the blockchain: one slot, one patient.</p>
+    </section>
+    <section class="card">
+      <h2>Available appointments</h2>
+      <p class="hint">Updated live. A time disappears the moment someone books it.</p>
+      <div id="doctors" class="list"><div class="empty">Loading…</div></div>
+    </section>
+    <p class="chain" id="chain"></p>
+  </main>
+
+  <div class="modal" id="bookModal">
+    <div class="card">
+      <h2>Confirm your appointment</h2>
+      <p class="hint" id="bookWhat"></p>
+      <label>Type of appointment</label>
+      <div class="choice">
+        <button id="modeVirtual" class="on" data-mode="Virtual">Virtual<small>Private video link</small></button>
+        <button id="modeInPerson" data-mode="In-person">In-person<small>At the clinic</small></button>
+      </div>
+      <p class="hint" style="margin-top:10px">Your details were confirmed at sign-up, so nothing else is needed.</p>
+      <div class="row"><button class="btn ghost" id="bookCancel">Back</button><button class="btn green" id="bookConfirm">Book now</button></div>
+      <div id="bookResult"></div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+  <script>
+    let chosen = null, mode = "Virtual";
+
+    async function load() {
+      const { slots, network, contract } = await api("public");
+      $("chain").textContent = `Secured on Ethereum (${network}) · contract ${short(contract)}`;
+      const byDoc = {};
+      for (const s of slots) (byDoc[s.doctor.address] ??= { doctor: s.doctor, slots: [] }).slots.push(s);
+      const groups = Object.values(byDoc);
+      $("doctors").innerHTML = groups.length ? groups.map((g) => `
+        <div class="doctor">
+          <div class="row" style="justify-content:space-between"><div><div class="name">${esc(g.doctor.name)}</div>
+          <div class="hint" style="margin:0">${esc(g.doctor.specialty)} · Licence ${esc(g.doctor.licenseNo)}</div></div>${pill("Verified", "ok")}</div>
+          <div class="times">${g.slots.sort((a, b) => a.start - b.start).map((s) => `<button class="time" id="slot-${s.id}" data-slot="${s.id}" data-label="${esc(g.doctor.name)}, ${fmt(s.start)}">${fmt(s.start)}</button>`).join("")}</div>
+        </div>`).join("") : `<div class="empty">No open appointments right now.</div>`;
+      if (chosen && !slots.some((s) => s.id === chosen.id) && $("bookModal").classList.contains("on") && !$("bookResult").innerHTML)
+        $("bookResult").innerHTML = `<div class="alert bad" style="margin-top:12px">This time was just booked by someone else.</div>`;
+    }
+
+    $("doctors").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-slot]");
+      if (!b) return;
+      if (!ME) return (location.href = "/signin?next=/");
+      if (ME.role !== "patient") return toast("bad", "Only patients can book appointments", `You are signed in as ${ME.role}`);
+      chosen = { id: Number(b.dataset.slot), label: b.dataset.label };
+      $("bookWhat").textContent = chosen.label;
+      $("bookResult").innerHTML = "";
+      $("bookConfirm").disabled = false;
+      $("bookModal").classList.add("on");
+    });
+    for (const id of ["modeVirtual", "modeInPerson"]) $(id).onclick = () => {
+      mode = $(id).dataset.mode;
+      $("modeVirtual").classList.toggle("on", mode === "Virtual");
+      $("modeInPerson").classList.toggle("on", mode === "In-person");
+    };
+    $("bookCancel").onclick = () => $("bookModal").classList.remove("on");
+    $("bookConfirm").onclick = async () => {
+      $("bookConfirm").disabled = true;
+      const r = await act("Booking", "patient/book", { slotId: chosen.id, mode });
+      if (!r) { $("bookConfirm").disabled = false; return; }
+      $("bookResult").innerHTML = `<div class="alert good" style="margin-top:12px"><b>Booked: appointment #${r.id}</b>
+        ${r.link ? `<span>Your private consultation link is in <a href="/patient">My portal</a>. It only opens for you.</span>`
+                 : `<span>Please come to MediLink Clinic, Kigali, 15 minutes early.</span>`}
+        <a class="btn" href="/patient">Go to my appointments</a></div>`;
+    };
+
+    layout("home").then(() => { load(); live(load); });
+  </script>
+</body>
+</html>
