@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MediLink | Patient portal</title>
+  <link rel="icon" href="/icons/icon-192x192.png"><link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <main>
+    <section class="card" id="profile"></section>
+    <section class="card">
+      <div class="row" style="justify-content:space-between"><h2>My appointments</h2><a class="btn small fit" href="/">Book an appointment</a></div>
+      <div id="appts" class="list" style="margin-top:10px"><div class="empty">Loading…</div></div>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+  <script>
+    function apptCard(a) {
+      const when = fmt(a.slot.start);
+      let body = "";
+      if (a.status === "Reschedule proposed") {
+        body = `<div class="alert"><b>${esc(a.doctor.name)} cannot attend: "${esc(a.reason)}"</b>
+          <span>Proposed new time: <b>${fmt(a.proposed.start)}</b></span>
+          <button class="btn green" data-act="accept" data-id="${a.id}">Accept ${fmt(a.proposed.start)}</button>
+          <span class="meta">Or choose another time with ${esc(a.doctor.name)}:</span>
+          <div class="times">${a.alternatives.map((s) => `<button class="time" data-choose="${s.id}" data-id="${a.id}">${fmt(s.start)}</button>`).join("") || `<span class="meta">No other open times right now.</span>`}</div>
+          <button class="btn red" data-act="decline" data-id="${a.id}">Decline and cancel</button></div>`;
+      } else if (a.status === "Booked") {
+        body = `<div class="row">${a.link ? `<a class="btn" href="${a.link}" target="_blank" id="join-${a.id}">Join private consultation</a>`
+          : `<span class="meta">MediLink Clinic, Kigali. Please arrive 15 minutes early.</span>`}
+          <button class="btn ghost fit" data-act="cancel" data-id="${a.id}">Cancel</button></div>`;
+      }
+      return `<div class="item" id="appt-${a.id}"><div class="head"><b>#${a.id} · ${esc(a.doctor.name)}</b>${pill(a.status)}</div>
+        <div class="meta">${when} · ${esc(a.doctor.specialty)} · ${pill(a.mode)}</div>${body}</div>`;
+    }
+
+    async function load() {
+      const { verified, appts } = await api("patient");
+      $("profile").innerHTML = `<div class="row" style="justify-content:space-between"><div><h2>${esc(ME.name)}</h2>
+        <div class="meta">${esc(ME.email)} · ${esc(ME.phone)} · Age ${esc(ME.age)}</div></div>
+        <div class="fit">${verified ? pill("Details verified on blockchain", "ok") : pill("Not verified")}</div></div>
+        <p class="hint" style="margin:6px 0 0">Wallet ${short(ME.address)}</p>`;
+      $("appts").innerHTML = appts.length ? appts.map(apptCard).join("") : `<div class="empty">No appointments yet. <a href="/">Find a doctor</a></div>`;
+    }
+
+    $("appts").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-act],[data-choose]");
+      if (!b) return;
+      const id = Number(b.dataset.id);
+      if (b.dataset.choose) return act("Moving to the new time", "patient/choose", { id, slotId: Number(b.dataset.choose) }, load);
+      const labels = { accept: "Accepting new time", decline: "Declining", cancel: "Cancelling" };
+      act(labels[b.dataset.act], `patient/${b.dataset.act}`, { id }, load);
+    });
+
+    layout("portal").then(() => { if (requireRole("patient")) { load(); live(load); } });
+  </script>
+</body>
+</html>
