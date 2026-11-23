@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MediLink | Consultation room</title>
+  <link rel="icon" href="/icons/icon-192x192.png"><link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <main style="max-width:900px"><section class="card" id="room"><div class="empty">Checking your access on the blockchain…</div></section></main>
+  <script src="/app.js"></script>
+  <script>
+    layout("portal").then(async () => {
+      const q = new URLSearchParams(location.search);
+      if (!ME) return ($("room").innerHTML = `<div class="alert bad"><b>Access denied</b><span>This private link only opens for the patient and doctor of this appointment. Please <a href="/signin?next=${encodeURIComponent(location.pathname + location.search)}">sign in</a>.</span></div>`);
+      try {
+        const m = await api(`meet?id=${q.get("id")}&t=${q.get("t")}`);
+        $("room").innerHTML = `<div class="head row" style="justify-content:space-between"><div><h2>Private consultation #${m.id}</h2>
+          <div class="meta">${esc(m.doctor)} with ${esc(m.patient)} · ${fmt(m.start)}</div></div><div class="fit">${pill("Access verified", "ok")}</div></div>
+          <p class="hint" style="margin-top:6px">This link was checked against the hash stored on the blockchain at booking.</p>
+          <iframe src="https://meet.jit.si/${encodeURIComponent(m.room)}" allow="camera; microphone; fullscreen" style="width:100%;height:480px;border:0;border-radius:10px;margin-top:8px"></iframe>`;
+      } catch (e) {
+        $("room").innerHTML = `<div class="alert bad"><b>Access denied</b><span>${esc(e.message)}</span></div>`;
+      }
+    });
+  </script>
+</body>
+</html>
