@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MediLink | Sign in</title>
+  <link rel="icon" href="/icons/icon-192x192.png"><link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <main style="max-width:440px">
+    <section class="card">
+      <h2>Sign in</h2>
+      <p class="hint">Patients, doctors and the admin all sign in here.</p>
+      <form id="form">
+        <label for="email">Email</label><input id="email" type="email" required>
+        <label for="password">Password</label><input id="password" type="password" required>
+        <button class="btn full" id="submit">Sign in</button>
+      </form>
+      <p class="hint" style="margin-top:12px">New to MediLink? <a href="/signup">Create an account</a></p>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+  <script>
+    $("form").onsubmit = async (e) => {
+      e.preventDefault();
+      try {
+        const { role } = await api("signin", { email: $("email").value, password: $("password").value });
+        const next = new URLSearchParams(location.search).get("next");
+        location.href = next || { patient: "/", doctor: "/doctor", admin: "/admin" }[role];
+      } catch (err) {
+        toast("bad", "Sign in failed", err.message);
+      }
+    };
+    layout("signin");
+  </script>
+</body>
+</html>
