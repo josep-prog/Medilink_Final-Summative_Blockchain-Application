@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MediLink | Doctor dashboard</title>
+  <link rel="icon" href="/icons/icon-192x192.png"><link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <main>
+    <section class="card" id="profile"></section>
+    <section class="card" id="slotCard" hidden>
+      <h2>Publish an available time</h2>
+      <p class="hint">Patients see it on the home page straight away.</p>
+      <div class="row">
+        <div><label for="slotDate">Date</label><input id="slotDate" type="date"></div>
+        <div><label for="slotTime">Time</label><input id="slotTime" type="time" value="09:00"></div>
+        <div class="fit" style="align-self:flex-end"><button class="btn" id="addSlot">Publish</button></div>
+      </div>
+    </section>
+    <div class="grid2">
+      <section class="card"><h2>My appointments</h2><div id="appts" class="list" style="margin-top:10px"></div></section>
+      <section class="card"><h2>My times</h2><div id="slots" class="list" style="margin-top:10px"></div></section>
+    </div>
+  </main>
+  <script src="/app.js"></script>
+  <script>
+    let openSlots = [];
+
+    function apptCard(a) {
+      const now = Date.now() / 1000;
+      let actions = "";
+      if (a.status === "Booked") {
+        actions = `<div class="row">${a.link ? `<a class="btn small" href="${a.link}" target="_blank">Join consultation</a>` : ""}
+          <button class="btn small ghost" data-absent="${a.id}">Cannot attend</button>
+          <button class="btn small green" data-complete="${a.id}" ${a.slot.start > now ? "disabled title='Available once the visit starts'" : ""}>Complete</button></div>
+          <div class="alert" id="absent-${a.id}" hidden>
+            <label for="reason-${a.id}">Reason the patient will see</label><textarea id="reason-${a.id}"></textarea>
+            <label for="offer-${a.id}">Offer one of your open times</label>
+            <select id="offer-${a.id}">${openSlots.map((s) => `<option value="${s.id}">${fmt(s.start)}</option>`).join("") || "<option value=''>Publish another time first</option>"}</select>
+            <button class="btn" data-propose="${a.id}">Send proposal to patient</button></div>`;
+      } else if (a.status === "Reschedule proposed") {
+        actions = `<span class="meta">Waiting for the patient to choose. Proposed ${fmt(a.proposed.start)}.</span>`;
+      }
+      return `<div class="item"><div class="head"><b>#${a.id} · ${esc(a.patientName || short(a.patient))}</b>${pill(a.status)}</div>
+        <div class="meta">${fmt(a.slot.start)} · ${pill(a.mode)}</div>${actions}</div>`;
+    }
+
+    async function load() {
+      const { profile, slots, appts } = await api("doctor");
+      openSlots = slots.filter((s) => s.status === "Open" && s.start > Date.now() / 1000);
+      const banner = {
+        Pending: `<div class="alert">Your application is recorded on the blockchain and waiting for admin approval.</div>`,
+        Removed: `<div class="alert bad">Your account was removed by the admin. Existing appointments remain.</div>`,
+        Approved: "",
+      }[profile.status];
+      $("profile").innerHTML = `<div class="row" style="justify-content:space-between"><div><h2>${esc(profile.name)}</h2>
+        <div class="meta">${esc(profile.specialty)} · Licence ${esc(profile.licenseNo)} · ${esc(ME.email)}</div></div><div class="fit">${pill(profile.status)}</div></div>${banner}`;
+      $("slotCard").hidden = profile.status !== "Approved";
+      $("slots").innerHTML = slots.length ? slots.map((s) => `<div class="item"><div class="head"><span>${fmt(s.start)}</span>
+        <span>${pill(s.status)} ${s.status === "Open" ? `<button class="btn small ghost" data-close="${s.id}">Withdraw</button>` : ""}</span></div></div>`).join("")
+        : `<div class="empty">No times published yet.</div>`;
+      $("appts").innerHTML = appts.length ? appts.map(apptCard).join("") : `<div class="empty">No bookings yet.</div>`;
+    }
+
+    $("addSlot").onclick = () => act("Publishing time", "doctor/slot", { start: `${$("slotDate").value}T${$("slotTime").value}` }, load);
+    document.body.addEventListener("click", (e) => {
+      const t = e.target;
+      if (t.dataset.close) act("Withdrawing time", "doctor/close", { slotId: Number(t.dataset.close) }, load);
+      if (t.dataset.absent) $(`absent-${t.dataset.absent}`).hidden = false;
+      if (t.dataset.complete) act("Completing visit", "doctor/complete", { id: Number(t.dataset.complete) }, load);
+      if (t.dataset.propose) {
+        const id = t.dataset.propose;
+        act("Sending proposal", "doctor/propose", { id: Number(id), slotId: Number($(`offer-${id}`).value), reason: $(`reason-${id}`).value.trim() }, load);
+      }
+    });
+
+    const d = new Date(Date.now() + 864e5);
+    $("slotDate").value = d.toISOString().slice(0, 10);
+    layout("portal").then(() => { if (requireRole("doctor")) { load(); live(() => { if (!document.querySelector("[id^=absent-]:not([hidden])")) load(); }); } });
+  </script>
+</body>
+</html>
