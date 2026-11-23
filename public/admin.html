@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MediLink | Admin</title>
+  <link rel="icon" href="/icons/icon-192x192.png"><link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <main>
+    <section class="card"><h2>Platform overview</h2><p class="hint" id="chain"></p><div class="stats" id="stats"></div></section>
+    <div class="grid2">
+      <section class="card"><h2>Doctors</h2><p class="hint">Approve verified applications. Removing a doctor keeps their existing appointments.</p><div id="doctors" class="list"></div></section>
+      <section class="card"><h2>Live activity</h2><p class="hint">Every action on the platform, straight from the blockchain.</p><div id="feed" class="feed"></div></section>
+    </div>
+    <section class="card">
+      <h2>All appointments</h2>
+      <p class="hint">View only. The smart contract gives the admin no way to cancel or change a patient's appointment.</p>
+      <div style="overflow-x:auto"><table><thead><tr><th>#</th><th>Patient</th><th>Doctor</th><th>Time</th><th>Type</th><th>Status</th></tr></thead><tbody id="appts"></tbody></table></div>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+  <script>
+    const LABEL = {
+      DoctorApplied: "Doctor applied", DoctorApproved: "Doctor approved", DoctorRemoved: "Doctor removed", PatientRegistered: "Patient registered",
+      SlotCreated: "Time published", SlotClosed: "Time withdrawn", AppointmentBooked: "Appointment booked", RescheduleProposed: "Doctor proposed new time",
+      AppointmentRescheduled: "Appointment moved", AppointmentCancelled: "Appointment cancelled", AppointmentCompleted: "Visit completed",
+    };
+
+    async function load() {
+      const d = await api("admin");
+      const who = {};
+      d.doctors.forEach((x) => (who[x.address.toLowerCase()] = x.name));
+      d.patients.forEach((x) => (who[x.address.toLowerCase()] = x.name));
+      const name = (a) => who[String(a).toLowerCase()] || (String(a).startsWith("0x") ? short(a) : a);
+      const count = (arr, f) => arr.filter(f).length;
+
+      $("chain").textContent = `Ethereum ${d.network} · contract ${d.contract}`;
+      $("stats").innerHTML = [
+        [count(d.doctors, (x) => x.status === "Approved"), "Approved doctors"], [count(d.doctors, (x) => x.status === "Pending"), "Waiting approval"],
+        [d.patients.length, "Patients"], [count(d.slots, (s) => s.status === "Open"), "Open times"],
+        [count(d.appts, (a) => a.status === "Booked"), "Booked"], [count(d.appts, (a) => a.status === "Reschedule proposed"), "Reschedule pending"],
+      ].map(([n, l]) => `<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
+
+      $("doctors").innerHTML = d.doctors.length ? d.doctors.map((x) => `<div class="item"><div class="head"><b>${esc(x.name)}</b>${pill(x.status)}</div>
+        <div class="meta">${esc(x.specialty)} · Licence ${esc(x.licenseNo)} · ${esc(x.email || "")}</div>
+        ${x.status === "Pending" ? `<button class="btn small green" data-approve="${x.address}">Approve</button>` : ""}
+        ${x.status === "Approved" ? `<button class="btn small red" data-remove="${x.address}">Remove</button>` : ""}</div>`).join("")
+        : `<div class="empty">No doctor applications yet.</div>`;
+
+      $("feed").innerHTML = d.events.length ? d.events.map((e) => {
+        const detail = e.name.startsWith("Appointment") || e.name === "RescheduleProposed" ? `#${e.args[0]}` : e.name.startsWith("Slot") ? `time #${e.args[0]}` : name(e.args[0]);
+        const extra = e.name === "RescheduleProposed" ? ` · "${esc(e.args[2])}"` : "";
+        return `<div><b>${LABEL[e.name]}</b> · ${esc(detail)}${extra}<div class="mono">block ${e.block} · tx ${short(e.tx)}</div></div>`;
+      }).join("") : `<div class="empty">No activity yet.</div>`;
+
+      $("appts").innerHTML = d.appts.length ? [...d.appts].reverse().map((a) => `<tr><td>${a.id}</td><td>${esc(a.patientName || short(a.patient))}</td>
+        <td>${esc(a.doctor.name)}</td><td>${fmt(a.slot.start)}</td><td>${pill(a.mode)}</td><td>${pill(a.status)}</td></tr>`).join("")
+        : `<tr><td colspan="6" class="empty">No appointments yet.</td></tr>`;
+    }
+
+    document.body.addEventListener("click", (e) => {
+      if (e.target.dataset.approve) act("Approving doctor", "admin/approve", { address: e.target.dataset.approve }, load);
+      if (e.target.dataset.remove) act("Removing doctor", "admin/remove", { address: e.target.dataset.remove }, load);
+    });
+    layout("portal").then(() => { if (requireRole("admin")) { load(); live(load); } });
+  </script>
+</body>
+</html>
